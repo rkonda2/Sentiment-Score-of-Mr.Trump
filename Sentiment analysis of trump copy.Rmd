@@ -1,10 +1,3 @@
----
-title: "Sentiment Analysis of Trump"
-author: "Ravi Teja Konda"
-date: "November 9, 2016"
-output: pdf_document
----
-
 
 Sentiment Analysis with R
 
