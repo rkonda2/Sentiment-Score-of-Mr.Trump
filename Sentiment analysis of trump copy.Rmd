@@ -1,0 +1,109 @@
+---
+title: "Sentiment Analysis of Trump"
+author: "Ravi Teja Konda"
+date: "November 9, 2016"
+output: pdf_document
+---
+
+
+Sentiment Analysis with R
+
+Grab your API keys and access tokens from Twitter, you’ll need them for the R script.
+
+
+
+
+```{r}
+install.packages("twitteR")
+install.packages("ROAuth")
+install.packages("httr")
+install.packages("plyr")
+install.packages("ggplot2")
+install.packages("plotly")
+library(twitteR)
+library(ROAuth)
+library(httr)
+library(plyr)
+library(ggplot2)
+library(plotly)
+
+#Set up API keys and access tokens
+api_key <- "QjL56aMf79NSDYnHXFUGjRSuI"
+api_secret <- "GvRewQQ5BYv97NIskXuCyIUitQneK1cEXz2ER4L9rN9ky5Ds1l"
+access_token <- "711069376779313152-Jy3keltbhnmYy0y71MX0X6Fs0P4pyQf"
+access_token_secret <- "LXsPZU2CPvupivnoYe3atVYFPDfsU0LozjHzqkBPGYL32"
+setup_twitter_oauth(api_key, api_secret, access_token, access_token_secret)
+
+```
+```{r}
+#Grab latest tweets
+
+tweets_trump <- searchTwitter('@realDonaldTrump',n = 1500)
+
+#Loop over tweets and extract data
+feed_trump = laply(tweets_trump, function(t)t$getText())
+
+
+#Read in dictionary of positive and #negative works
+pos = scan('opinion-lexicon-English/positive-words.txt',what = 'character', comment.char = ';')
+neg = scan ('opinion-lexicon-English/negative-words.txt',what = 'character',comment.char = ';')
+
+
+score.sentiment = function(sentences, good_text, bad_text, .progress='none')
+{
+    require(plyr)
+    require(stringr)
+    # we got a vector of sentences. plyr will handle a list
+    # or a vector as an "l" for us
+    # we want a simple array of scores back, so we use
+    # "l" + "a" + "ply" = "laply":
+    scores = laply(sentences, function(sentence, good_text, bad_text) {
+        
+        # clean up sentences with R's regex-driven global substitute, gsub():
+        sentence = gsub('[[:punct:]]', '', sentence)
+        sentence = gsub('[[:cntrl:]]', '', sentence)
+        sentence = gsub('\\d+', '', sentence)
+        #to remove emojis
+        sentence <- iconv(sentence, 'UTF-8', 'ASCII')
+        sentence = tolower(sentence)        
+        # split into words. str_split is in the stringr package
+        word.list = str_split(sentence, '\\s+')
+        # sometimes a list() is one level of hierarchy too much
+        words = unlist(word.list)
+        
+        # compare our words to the dictionaries of positive & negative terms
+        pos.matches = match(words, good_text)
+        neg.matches = match(words, bad_text)
+        
+        # match() returns the position of the matched term or NA
+        # we just want a TRUE/FALSE:
+        pos.matches = !is.na(pos.matches)
+        neg.matches = !is.na(neg.matches)
+        
+        # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
+        score = sum(pos.matches) - sum(neg.matches)
+        
+        return(score)
+    }, good_text, bad_text, .progress=.progress )
+    
+    scores.df = data.frame(score=scores, text=sentences)
+    return(scores.df)
+}
+
+bad_text = c(pos, 'wtf', 'epicfail', 'douchebag')
+good_text = c(neg, 'upgrade', ':)', '#iVoted', 'voted')
+
+
+trump <- score.sentiment(feed_trump, good_text, bad_text, .progress='text')
+trump$name <- 'Trump'
+# Cut the text, just gets in the way
+plotdat <- trump[c("name", "score")]
+# Remove neutral values of 0
+plotdat <- plotdat[!plotdat$score == 0, ]
+
+# Nice little quick plot
+qplot(factor(score), data=plotdat, geom="bar", 
+      fill=factor(name),
+      xlab = "Sentiment Score")
+
+
