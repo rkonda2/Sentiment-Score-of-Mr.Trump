@@ -30,35 +30,29 @@ setup_twitter_oauth(api_key, api_secret, access_token, access_token_secret)
 
 tweets_trump <- searchTwitter('@realDonaldTrump',n = 1500)
 
-#Loop over tweets and extract data
+
 feed_trump = laply(tweets_trump, function(t)t$getText())
 
 
 #Read in dictionary of positive and #negative works
-pos = scan('opinion-lexicon-English/positive-words.txt',what = 'character', comment.char = ';')
-neg = scan ('opinion-lexicon-English/negative-words.txt',what = 'character',comment.char = ';')
+pos = scan('positive-words.txt',what = 'character', comment.char = ';')
+neg = scan ('negative-words.txt',what = 'character',comment.char = ';')
 
 
 score.sentiment = function(sentences, good_text, bad_text, .progress='none')
 {
     require(plyr)
     require(stringr)
-    # we got a vector of sentences. plyr will handle a list
-    # or a vector as an "l" for us
-    # we want a simple array of scores back, so we use
-    # "l" + "a" + "ply" = "laply":
+  
     scores = laply(sentences, function(sentence, good_text, bad_text) {
         
-        # clean up sentences with R's regex-driven global substitute, gsub():
+  
         sentence = gsub('[[:punct:]]', '', sentence)
         sentence = gsub('[[:cntrl:]]', '', sentence)
         sentence = gsub('\\d+', '', sentence)
-        #to remove emojis
         sentence <- iconv(sentence, 'UTF-8', 'ASCII')
         sentence = tolower(sentence)        
-        # split into words. str_split is in the stringr package
         word.list = str_split(sentence, '\\s+')
-        # sometimes a list() is one level of hierarchy too much
         words = unlist(word.list)
         
         # compare our words to the dictionaries of positive & negative terms
@@ -66,11 +60,10 @@ score.sentiment = function(sentences, good_text, bad_text, .progress='none')
         neg.matches = match(words, bad_text)
         
         # match() returns the position of the matched term or NA
-        # we just want a TRUE/FALSE:
+        # Gives only True/False
         pos.matches = !is.na(pos.matches)
         neg.matches = !is.na(neg.matches)
         
-        # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
         score = sum(pos.matches) - sum(neg.matches)
         
         return(score)
@@ -91,7 +84,7 @@ plotdat <- trump[c("name", "score")]
 # Remove neutral values of 0
 plotdat <- plotdat[!plotdat$score == 0, ]
 
-# Nice little quick plot
+#little quick plot
 qplot(factor(score), data=plotdat, geom="bar", 
       fill=factor(name),
       xlab = "Sentiment Score")
