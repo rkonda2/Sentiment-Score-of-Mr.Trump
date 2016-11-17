@@ -8,9 +8,6 @@ output: pdf_document
 
 Sentiment Analysis with R
 
-Grab your API keys and access tokens from Twitter, you’ll need them for the R script.
-
-
 
 
 ```{r}
